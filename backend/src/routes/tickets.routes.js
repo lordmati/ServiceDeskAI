@@ -8,6 +8,7 @@ import {
   updateTicketStatus,
   assignTicket,
   deleteTicket,
+  shareTicket,
 } from "../controllers/ticket.controller.js";
 
 const router = express.Router();
@@ -20,6 +21,9 @@ router.get("/:id", authMiddleware, getTicketById);
 
 // Crear un nuevo ticket con archivos
 router.post("/", authMiddleware, upload.array("media", 5), createTicket);
+
+// Compartir ticket por email
+router.post("/:id/share", authMiddleware, shareTicket);
 
 // Actualizar estado del ticket (ServiceDesk/Admin)
 router.patch(

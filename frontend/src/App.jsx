@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import TicketDetail from "./pages/TicketDetail";
+import Profile from "./pages/Profile";
 
 export default function App() {
   const isAuthenticated = () => !!localStorage.getItem("token");
@@ -25,7 +26,13 @@ export default function App() {
             isAuthenticated() ? <TicketDetail /> : <Navigate to="/login" />
           }
         />
+        <Route
+          path="/profile"
+          element={
+            isAuthenticated() ? <Profile /> : <Navigate to="/login" />
+          }
+        />
       </Routes>
     </BrowserRouter>
   );
-};
+}

@@ -1,5 +1,6 @@
 import Ticket from "../models/Ticket.js";
 import { analyzeImage } from "../services/imageAnalysis.js";
+import { sendTicketEmail } from "../services/email.service.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -179,6 +180,65 @@ export const deleteTicket = async (req, res) => {
 
     res.json({ message: "Ticket deleted successfully" });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const shareTicket = async (req, res) => {
+  try {
+    const { emails } = req.body;
+
+    if (!emails || !Array.isArray(emails) || emails.length === 0) {
+      return res.status(400).json({ message: "Please provide at least one email" });
+    }
+
+    // Validar formato de emails
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const invalidEmails = emails.filter(email => !emailRegex.test(email));
+    
+    if (invalidEmails.length > 0) {
+      return res.status(400).json({ 
+        message: "Invalid email format",
+        invalidEmails 
+      });
+    }
+
+    const ticket = await Ticket.findById(req.params.id)
+      .populate("user", "name email")
+      .populate("assignedTo", "name email")
+      .populate("office");
+
+    if (!ticket) {
+      return res.status(404).json({ message: "Ticket not found" });
+    }
+
+    // Verificar permisos
+    if (
+      req.user.role === "standard" &&
+      ticket.user._id.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    // Enviar email
+    await sendTicketEmail(ticket, emails, {
+      name: req.user.name,
+      email: req.user.email,
+    });
+
+    // Actualizar lista de emails compartidos en el ticket
+    const uniqueEmails = [...new Set([...(ticket.sharedWith || []), ...emails])];
+    ticket.sharedWith = uniqueEmails;
+    await ticket.save();
+
+    console.log("✅ Ticket shared successfully:", { ticketId: ticket._id, emails });
+
+    res.json({ 
+      message: "Ticket shared successfully",
+      sharedWith: uniqueEmails,
+    });
+  } catch (err) {
+    console.error("❌ Error sharing ticket:", err);
     res.status(500).json({ error: err.message });
   }
 };

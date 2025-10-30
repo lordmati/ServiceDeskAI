@@ -9,6 +9,7 @@ const TicketDetail = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem("user"));
@@ -52,19 +53,34 @@ const TicketDetail = () => {
 
   const canUpdateStatus =
     user?.role === "servicedesk" || user?.role === "admin";
+  const canShare = 
+    user?.role === "admin" || 
+    user?.role === "servicedesk" || 
+    ticket.user._id === user?.id;
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <button
-          onClick={() => navigate("/")}
-          className="mb-4 text-blue-600 hover:underline"
-        >
-          ← Back to Dashboard
-        </button>
+        <div className="flex justify-between items-center mb-4">
+          <button
+            onClick={() => navigate("/")}
+            className="text-blue-600 hover:underline"
+          >
+            ← Back to Dashboard
+          </button>
+          
+          {canShare && (
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 flex items-center gap-2"
+            >
+              📧 Share via Email
+            </button>
+          )}
+        </div>
 
-        {/* Ticket Details */}
+        {/* Ticket Details Card */}
         <div className="bg-white rounded-xl shadow-md p-6">
           <div className="flex justify-between items-start mb-6">
             <div>
@@ -76,7 +92,9 @@ const TicketDetail = () => {
                       ? "bg-yellow-100 text-yellow-800"
                       : ticket.status === "closed"
                       ? "bg-green-100 text-green-800"
-                      : "bg-blue-100 text-blue-800"
+                      : ticket.status === "assigned"
+                      ? "bg-blue-100 text-blue-800"
+                      : "bg-purple-100 text-purple-800"
                   }`}
                 >
                   {ticket.status}
@@ -87,6 +105,8 @@ const TicketDetail = () => {
                       ? "bg-red-100 text-red-800"
                       : ticket.priority === "high"
                       ? "bg-orange-100 text-orange-800"
+                      : ticket.priority === "medium"
+                      ? "bg-yellow-100 text-yellow-800"
                       : "bg-gray-100 text-gray-800"
                   }`}
                 >
@@ -113,6 +133,7 @@ const TicketDetail = () => {
           </div>
 
           <div className="space-y-4">
+            {/* Description */}
             <div>
               <h3 className="font-semibold text-gray-700">Description</h3>
               <p className="text-gray-600">{ticket.description}</p>
@@ -214,6 +235,7 @@ const TicketDetail = () => {
               </div>
             )}
 
+            {/* Ticket Information */}
             <div className="grid grid-cols-2 gap-4 pt-4 border-t">
               <div>
                 <h3 className="font-semibold text-gray-700 text-sm">
@@ -254,9 +276,157 @@ const TicketDetail = () => {
                   {new Date(ticket.createdAt).toLocaleString()}
                 </p>
               </div>
+
+              {ticket.closedAt && (
+                <div>
+                  <h3 className="font-semibold text-gray-700 text-sm">
+                    Closed At
+                  </h3>
+                  <p className="text-gray-600">
+                    {new Date(ticket.closedAt).toLocaleString()}
+                  </p>
+                </div>
+              )}
+
+              {ticket.sharedWith && ticket.sharedWith.length > 0 && (
+                <div className="col-span-2">
+                  <h3 className="font-semibold text-gray-700 text-sm mb-1">
+                    Shared With
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {ticket.sharedWith.map((email, i) => (
+                      <span
+                        key={i}
+                        className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
+                      >
+                        {email}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <ShareTicketModal
+          ticketId={id}
+          onClose={() => setShowShareModal(false)}
+          onSuccess={() => {
+            setShowShareModal(false);
+            fetchTicket();
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+// Componente Modal para compartir tickets
+const ShareTicketModal = ({ ticketId, onClose, onSuccess }) => {
+  const [emails, setEmails] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  const handleShare = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setSuccess(false);
+
+    try {
+      // Convertir string de emails separados por comas en array
+      const emailList = emails
+        .split(",")
+        .map(email => email.trim())
+        .filter(email => email.length > 0);
+
+      if (emailList.length === 0) {
+        setError("Please enter at least one email");
+        setLoading(false);
+        return;
+      }
+
+      await API.post(`/tickets/${ticketId}/share`, { emails: emailList });
+      
+      setSuccess(true);
+      setTimeout(() => {
+        onSuccess();
+      }, 2000);
+    } catch (err) {
+      setError(err.response?.data?.message || "Error sharing ticket");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl p-6 w-full max-w-md">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">📧 Share Ticket via Email</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 text-2xl"
+          >
+            ✕
+          </button>
+        </div>
+
+        {success ? (
+          <div className="text-center py-6">
+            <div className="text-6xl mb-4">✅</div>
+            <p className="text-lg font-semibold text-green-600">
+              Email sent successfully!
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleShare} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Email addresses
+              </label>
+              <textarea
+                className="w-full border p-2 rounded"
+                rows="4"
+                placeholder="Enter email addresses separated by commas&#10;Example: user1@example.com, user2@example.com"
+                value={emails}
+                onChange={(e) => setEmails(e.target.value)}
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Separate multiple emails with commas
+              </p>
+            </div>
+
+            {error && (
+              <div className="bg-red-50 text-red-600 p-3 rounded text-sm">
+                {error}
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 bg-gray-200 text-gray-800 py-2 rounded hover:bg-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 bg-purple-600 text-white py-2 rounded hover:bg-purple-700 disabled:opacity-50"
+              >
+                {loading ? "Sending..." : "Send Email"}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );

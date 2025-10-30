@@ -8,6 +8,7 @@ import authRoutes from "./routes/auth.routes.js";
 import ticketRoutes from "./routes/tickets.routes.js";
 import officeRoutes from "./routes/offices.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
+import { verifyEmailConfig } from "./services/email.service.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,6 +26,9 @@ mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
+
+// Verificar configuración de email
+verifyEmailConfig();
 
 app.use("/api/auth", authRoutes);
 app.use("/api/tickets", ticketRoutes);

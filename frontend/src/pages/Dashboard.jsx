@@ -1,19 +1,21 @@
 import React, { useEffect, useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { loadUserFromStorage, logout } from "../store/userSlice";
 import API from "../services/api";
 import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const user = useSelector((state) => state.user.user);
   const [tickets, setTickets] = useState([]);
-  const [user, setUser] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
-    // Obtener info del usuario del localStorage
-    const userData = JSON.parse(localStorage.getItem("user"));
-    setUser(userData);
+    // Cargar usuario desde Redux/localStorage
+    dispatch(loadUserFromStorage());
     fetchTickets();
-  }, []);
+  }, [dispatch]);
 
   const fetchTickets = async () => {
     try {
@@ -25,8 +27,7 @@ const Dashboard = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    dispatch(logout());
     navigate("/login");
   };
 
@@ -53,41 +54,49 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       {/* Header */}
-      <div className="max-w-6xl mx-auto mb-6">
-        <div className="bg-white rounded-xl shadow-md p-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">ServiceDesk AI</h1>
-            <p className="text-sm text-gray-600">
-              Welcome, {user?.name} ({user?.role})
-            </p>
-          </div>
-          <div className="flex gap-3">
-            {user?.role === "standard" && (
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-              >
-                + New Ticket
-              </button>
-            )}
-            {user?.role === "admin" && (
-              <button
-                onClick={() => navigate("/admin")}
-                className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
-              >
-                Admin Panel
-              </button>
-            )}
+    <div className="max-w-6xl mx-auto mb-4 sm:mb-6">
+      <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold">ServiceDesk AI</h1>
+          <p className="text-xs sm:text-sm text-gray-600">
+            Welcome, {user?.name} ({user?.role})
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
+          {user?.role === "standard" && (
             <button
-              onClick={handleLogout}
-              className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+              onClick={() => setShowCreateModal(true)}
+              className="flex-1 sm:flex-none bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 focus-ring smooth-transition text-sm sm:text-base"
+              aria-label="Create new ticket"
             >
-              Logout
+              <span className="sm:hidden">+ Ticket</span>
+              <span className="hidden sm:inline">+ New Ticket</span>
             </button>
-          </div>
+          )}
+          {user?.role === "admin" && (
+            <button
+              onClick={() => navigate("/admin")}
+              className="flex-1 sm:flex-none bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 focus-ring smooth-transition text-sm sm:text-base"
+            >
+              Admin
+            </button>
+          )}
+          <button
+            onClick={() => navigate("/profile")}
+            className="flex-1 sm:flex-none bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 focus-ring smooth-transition text-sm sm:text-base"
+          >
+            Profile
+          </button>
+          <button
+            onClick={handleLogout}
+            className="flex-1 sm:flex-none bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 focus-ring smooth-transition text-sm sm:text-base"
+            aria-label="Logout from account"
+          >
+            Logout
+          </button>
         </div>
       </div>
-
+    </div>
       {/* Tickets List */}
       <div className="max-w-6xl mx-auto">
         <div className="bg-white rounded-xl shadow-md p-6">

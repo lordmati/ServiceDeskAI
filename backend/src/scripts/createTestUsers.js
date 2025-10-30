@@ -43,7 +43,7 @@ const createTestData = async () => {
     const standard = await User.create({
       name: "Standard User",
       email: "standard@servicedesk.com",
-      password: "test132",
+      password: "test123",
       role: "standard",
       phone: "222222222",
     });
